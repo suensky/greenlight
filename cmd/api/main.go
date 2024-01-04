@@ -20,6 +20,7 @@ type config struct {
 	env  string
 	db   struct {
 		dsn          string
+		dbPassword   string
 		maxOpenConns int
 		maxIdleConns int
 		maxIdleTime  string
@@ -36,7 +37,7 @@ func main() {
 
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
-	flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://greenlight:<password>@localhost/greenlight?sslmode=disable", "PostgreSQL DSN")
+	flag.StringVar(&cfg.db.dbPassword, "db-password", "", "PostgreSQL password")
 	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
@@ -47,6 +48,7 @@ func main() {
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
 	// DB
+	cfg.db.dsn = fmt.Sprintf("postgres://greenlight:%s@localhost/greenlight?sslmode=disable", cfg.db.dbPassword)
 	db, err := openDB(cfg)
 	if err != nil {
 		logger.Fatal(err)
