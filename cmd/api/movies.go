@@ -6,11 +6,8 @@ import (
 	"time"
 
 	"github.com/suensky/greenlight/internal/data"
+	"github.com/suensky/greenlight/internal/validator"
 )
-
-func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "create a movie")
-}
 
 func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := app.readIDParam(r)
@@ -32,4 +29,35 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
+}
+
+func (app *application) createMovieHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Title   string       `json:"title"`
+		Year    int32        `json:"year"`
+		Runtime data.Runtime `json:"runtime"`
+		Genres  []string     `json:"genres"`
+	}
+
+	// Pass a non-nil pointer as the decode destination.
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	movie := &data.Movie{
+		Title:   input.Title,
+		Year:    input.Year,
+		Runtime: input.Runtime,
+		Genres:  input.Genres,
+	}
+
+	v := validator.New()
+	if data.ValidateMovie(v, movie); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+
+	fmt.Fprintf(w, "%+v\n", input)
 }
