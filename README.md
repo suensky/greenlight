@@ -53,17 +53,27 @@ exit
 
 ### Migration
 - Run migrations up
-```
+```bash
 migrate -path=./migrations -database=<$DB_DSN> up
 ```
 
 - Run migration down, i.e., rollback
-```
+```bash
 migrate -path=./migrations -database=<$DB_DSN> down
 ```
 
-- Note 1, for PostgreSQL 15+, need to run `GRANT ALL ON SCHEMA public TO <dd_user>;` to avoid issues like 
+- Check migration version
+```bash
+migrate -path=./migrations -database=<$DB_DSN> version
 ```
+
+- Migrate up or down to a specific version, e.g, 1
+```bash
+migrate -path=./migrations -database=<$DB_DSN> goto 1
+```
+
+- Note 1, for PostgreSQL 15+, need to run `GRANT ALL ON SCHEMA public TO <dd_user>;` to avoid issues like 
+```bash
 error: pq: permission denied for schema public
 ```
 
