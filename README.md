@@ -50,3 +50,25 @@ psql --host=localhost --dbname=greenlight --username=greenlight
 # or
 exit
 ```
+
+### Migration
+- Run migrations up
+```
+migrate -path=./migrations -database=<$DB_DSN> up
+```
+
+- Run migration down, i.e., rollback
+```
+migrate -path=./migrations -database=<$DB_DSN> down
+```
+
+- Note 1, for PostgreSQL 15+, need to run `GRANT ALL ON SCHEMA public TO <dd_user>;` to avoid issues like 
+```
+error: pq: permission denied for schema public
+```
+
+- Note 2, if migration has dirty database errors, such as
+```
+error: Dirty database version 2. Fix and force version.
+```
+Fix by running `migrate -path=./migrations -database=<$DB_DSN> force <VERSION>` 
