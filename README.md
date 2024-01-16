@@ -57,9 +57,9 @@ exit
 migrate -path=./migrations -database=<$DB_DSN> up
 ```
 
-- Run migration down, i.e., rollback
+- Run migration down, i.e., rollback optional n versions. n=1, rollback the last version. n not exists: rollback all.
 ```bash
-migrate -path=./migrations -database=<$DB_DSN> down
+migrate -path=./migrations -database=<$DB_DSN> down <n>
 ```
 
 - Check migration version
