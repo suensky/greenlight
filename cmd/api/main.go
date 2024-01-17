@@ -11,6 +11,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/suensky/greenlight/internal/data"
 	"github.com/suensky/greenlight/internal/jsonlog"
+	"github.com/suensky/greenlight/internal/mailer"
 )
 
 const version = "1.0.0"
@@ -30,12 +31,20 @@ type config struct {
 		burst   int
 		enabled bool
 	}
+	smtp struct {
+		host     string
+		port     int
+		username string
+		password string
+		sender   string
+	}
 }
 
 type application struct {
 	config config
 	logger *jsonlog.Logger
 	models data.Models
+	mailer mailer.Mailer
 }
 
 func main() {
@@ -43,14 +52,27 @@ func main() {
 
 	flag.IntVar(&cfg.port, "port", 4000, "API server port")
 	flag.StringVar(&cfg.env, "env", "development", "Environment (development|staging|production)")
+
+	// DB
 	flag.StringVar(&cfg.db.dbPassword, "db-password", "", "PostgreSQL password")
 	flag.IntVar(&cfg.db.maxOpenConns, "db-max-open-conns", 25, "PostgreSQL max open connections")
 	flag.IntVar(&cfg.db.maxIdleConns, "db-max-idle-conns", 25, "PostgreSQL max idle connections")
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "PostgreSQL max connection idle time")
 
+	// Rate limiting
 	flag.Float64Var(&cfg.limiter.rps, "limiter-rps", 10, "Rate limiter maximum requests per second")
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 20, "Rate limiter maximum burst")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
+
+	// Read the SMTP server configuration settings into the config struct, using the
+	// Mailtrap settings as teh default values.
+	mtUser := os.Getenv("MAILTRAP_USER")
+	mtPw := os.Getenv("MAILTRAP_PW")
+	flag.StringVar(&cfg.smtp.host, "smtp-host", "sandbox.smtp.mailtrap.io", "SMTP host")
+	flag.IntVar(&cfg.smtp.port, "smtp-port", 2525, "SMTP port")
+	flag.StringVar(&cfg.smtp.username, "smtp-username", mtUser, "SMTP username")
+	flag.StringVar(&cfg.smtp.password, "smtp-password", mtPw, "SMTP password")
+	flag.StringVar(&cfg.smtp.sender, "smtp-sender", "DoNotReply <3fc3f54366-09689f+1@inbox.mailtrap.io>", "SMTP sender")
 
 	flag.Parse()
 
@@ -70,6 +92,7 @@ func main() {
 		config: cfg,
 		logger: logger,
 		models: data.NewModels(db),
+		mailer: mailer.New(cfg.smtp.host, cfg.smtp.port, cfg.smtp.username, cfg.smtp.password, cfg.smtp.sender),
 	}
 
 	err = app.serve()
