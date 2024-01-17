@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	_ "github.com/lib/pq"
@@ -45,6 +46,7 @@ type application struct {
 	logger *jsonlog.Logger
 	models data.Models
 	mailer mailer.Mailer
+	wg     sync.WaitGroup
 }
 
 func main() {
@@ -64,8 +66,6 @@ func main() {
 	flag.IntVar(&cfg.limiter.burst, "limiter-burst", 20, "Rate limiter maximum burst")
 	flag.BoolVar(&cfg.limiter.enabled, "limiter-enabled", true, "Enable rate limiter")
 
-	// Read the SMTP server configuration settings into the config struct, using the
-	// Mailtrap settings as teh default values.
 	mtUser := os.Getenv("MAILTRAP_USER")
 	mtPw := os.Getenv("MAILTRAP_PW")
 	flag.StringVar(&cfg.smtp.host, "smtp-host", "sandbox.smtp.mailtrap.io", "SMTP host")
@@ -78,6 +78,10 @@ func main() {
 
 	// Logger
 	logger := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
+	logger.PrintInfo("mail info", map[string]string{
+		"SMTP username": mtUser,
+		"SMTP password": mtPw,
+	})
 
 	// DB
 	cfg.db.dsn = fmt.Sprintf("postgres://greenlight:%s@localhost/greenlight?sslmode=disable", cfg.db.dbPassword)
