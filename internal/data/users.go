@@ -5,9 +5,9 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"errors"
-	"log"
 	"time"
 
+	"github.com/suensky/greenlight/internal/jsonlog"
 	"github.com/suensky/greenlight/internal/validator"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -15,6 +15,8 @@ import (
 var (
 	ErrDuplicateEmail = errors.New("duplicate email")
 )
+
+var AnonymousUser = &User{}
 
 type User struct {
 	ID        int64     `json:"id"`
@@ -27,14 +29,17 @@ type User struct {
 }
 
 type UserModel struct {
-	DB       *sql.DB
-	InfoLog  *log.Logger
-	ErrorLog *log.Logger
+	DB     *sql.DB
+	Logger *jsonlog.Logger
 }
 
 type password struct {
 	plaintext *string
 	hash      []byte
+}
+
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
 
 // Insert inserts a new record in the users table in our database for the user. Note, that the id,
@@ -116,10 +121,7 @@ func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error)
 		FROM       users
         INNER JOIN tokens
 			ON users.id = tokens.user_id
-        WHERE tokens.hash = $1  --<-- Note: this is potentially vulnerable to a timing attack, 
-            -- but if successful the attacker would only be able to retrieve a *hashed* token 
-            -- which would still require a brute-force attack to find the 26 character string
-            -- that has the same SHA-256 hash that was found from our database. 
+        WHERE tokens.hash = $1
 			AND tokens.scope = $2
 			AND tokens.expiry > $3
 	`
@@ -144,6 +146,10 @@ func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error)
 		&user.Version,
 	)
 	if err != nil {
+		m.Logger.PrintError(err, map[string]string{
+			"tokenScope": tokenScope,
+			"hash":       string(tokenHash[:]),
+		})
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
 			return nil, ErrRecordNotFound

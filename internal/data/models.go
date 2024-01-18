@@ -3,6 +3,8 @@ package data
 import (
 	"database/sql"
 	"errors"
+
+	"github.com/suensky/greenlight/internal/jsonlog"
 )
 
 var (
@@ -16,16 +18,18 @@ type Models struct {
 	Tokens TokenModel
 }
 
-func NewModels(db *sql.DB) Models {
+func NewModels(db *sql.DB, logger *jsonlog.Logger) Models {
 	return Models{
 		Movies: MovieModel{
 			DB: db,
 		},
 		Users: UserModel{
-			DB: db,
+			DB:     db,
+			Logger: logger,
 		},
 		Tokens: TokenModel{
-			DB: db,
+			DB:     db,
+			Logger: logger,
 		},
 	}
 }

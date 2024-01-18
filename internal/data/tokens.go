@@ -8,20 +8,22 @@ import (
 	"encoding/base32"
 	"time"
 
+	"github.com/suensky/greenlight/internal/jsonlog"
 	"github.com/suensky/greenlight/internal/validator"
 )
 
 // Constants for token scope.
 const (
-	ScopeActivation = "activate"
+	ScopeActivation     = "activate"
+	ScopeAuthentication = "authentication"
 )
 
 type Token struct {
-	Plaintext string
-	Hash      []byte
-	UserID    int64
-	Expiry    time.Time
-	Scope     string
+	Plaintext string    `json:"token"`
+	Hash      []byte    `json:"-"`
+	UserID    int64     `json:"-"`
+	Expiry    time.Time `json:"expiry"`
+	Scope     string    `json:"-"`
 }
 
 func generateToken(userID int64, ttl time.Duration, scope string) (*Token, error) {
@@ -54,7 +56,8 @@ func ValidateTokenPlaintext(v *validator.Validator, tokenPlaintext string) {
 }
 
 type TokenModel struct {
-	DB *sql.DB
+	DB     *sql.DB
+	Logger *jsonlog.Logger
 }
 
 func (m TokenModel) New(userID int64, ttl time.Duration, scope string) (*Token, error) {
@@ -63,6 +66,10 @@ func (m TokenModel) New(userID int64, ttl time.Duration, scope string) (*Token, 
 		return nil, err
 	}
 
+	m.Logger.PrintInfo("Generated token", map[string]string{
+		"plaintext": token.Plaintext,
+		"hash":      string(token.Hash),
+	})
 	err = m.Insert(token)
 	return token, err
 }
