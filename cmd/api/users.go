@@ -35,12 +35,12 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	}
 
 	v := validator.New()
-
 	if data.ValidateUser(v, user); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
 
+	// Create user
 	err = app.models.Users.Insert(user)
 	if err != nil {
 		switch {
@@ -53,12 +53,19 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	token, err := app.models.Tokens.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
+	// Add permission for the new user
+	err = app.models.Permissions.AddForUser(user.ID, data.PermissionMoviesRead)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 
+	// Send welcome email with activation token.
+	token, err := app.models.Tokens.New(user.ID, 3*24*time.Hour, data.ScopeActivation)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 	app.background(func() {
 		data := map[string]interface{}{
 			"userID":          user.ID,
